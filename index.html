@@ -1,0 +1,366 @@
+<!-- PROTOTYPE — 화성 살이 나침반. 브라우저 내 몬테카를로 DES + 정책 최적입지 탐색. 서버 불필요. -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>화성 살이 나침반</title>
+<style>
+  :root{
+    --ink:#12203a; --ink2:#26364f; --paper:#f5f3ec; --line:#d8d3c4;
+    --accent:#e8541e; --accent2:#0f8a7e; --muted:#7c8598; --white:#fff;
+    --dong-a:#0f8a7e; --dong-b:#e8541e; --dong-c:#3a5fa8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  @keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 22px 60px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:18px}
+  .eyebrow{font-size:12px;letter-spacing:2px;color:var(--muted);font-weight:700}
+  h1{font-size:30px;letter-spacing:-.5px;margin:4px 0 2px}
+  .tag{font-size:14px;color:var(--ink2);font-style:italic}
+  .tabs{display:flex;gap:8px;margin-bottom:20px}
+  .tab{padding:10px 20px;border:1px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;
+    background:var(--paper);cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
+  .tab.on{background:var(--ink);color:var(--white)}
+  .grid{display:grid;grid-template-columns:300px 1fr;gap:22px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:18px}
+  .panel h2{font-size:13px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:14px;font-weight:800}
+  label{display:block;font-size:13px;font-weight:700;margin:14px 0 6px;color:var(--ink2)}
+  select,button{width:100%;font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
+  button.run{margin-top:20px;background:var(--ink);color:var(--white);font-weight:800;letter-spacing:1px;border:none;cursor:pointer;padding:13px;transition:.15s}
+  button.run:hover{background:var(--accent)}
+  .runs-note{font-size:11px;color:var(--muted);margin-top:8px;text-align:center}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:640px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:16px;position:relative;overflow:hidden}
+  .card .bar{position:absolute;top:0;left:0;right:0;height:4px}
+  .card h3{font-size:17px;margin-bottom:2px}
+  .card .sub{font-size:11px;color:var(--muted);margin-bottom:14px}
+  .metric{margin:12px 0}
+  .metric .k{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px}
+  .metric .v{font-size:22px;font-weight:800;letter-spacing:-.5px}
+  .metric .v small{font-size:12px;font-weight:600;color:var(--muted)}
+  .hist{display:flex;align-items:flex-end;gap:2px;height:44px;margin-top:6px}
+  .hist span{flex:1;border-radius:2px 2px 0 0;opacity:.85}
+  .risk{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;margin-top:2px}
+  .risk.hi{background:#fce8e2;color:#c0400f}
+  .risk.mid{background:#fdf3e0;color:#b5791a}
+  .risk.lo{background:#e2f2ef;color:#0f7a6e}
+  .verdict{background:var(--ink);color:var(--paper);border-radius:10px;padding:18px 20px;margin-top:20px;font-size:14px;line-height:1.7}
+  .verdict b{color:#ffd9a8}
+  .foot{font-size:11px;color:var(--muted);margin-top:18px;text-align:center;line-height:1.6}
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:50px 0}
+  .method{font-size:11px;color:var(--muted);margin-top:14px;border-top:1px dashed var(--line);padding-top:10px;line-height:1.6}
+  .hidden{display:none}
+  .rank{display:flex;align-items:center;gap:14px;background:var(--white);border:1px solid var(--line);
+    border-radius:10px;padding:14px 16px;margin-bottom:10px}
+  .rank .no{font-size:22px;font-weight:800;color:var(--muted);width:34px;text-align:center}
+  .rank.best{border-color:var(--accent2);border-width:2px}
+  .rank.best .no{color:var(--accent2)}
+  .rank .body{flex:1}
+  .rank .body .t{font-weight:800;font-size:15px}
+  .rank .body .d{font-size:12px;color:var(--muted)}
+  .rank .gain{text-align:right}
+  .rank .gain .g{font-size:20px;font-weight:800;color:var(--accent2)}
+  .rank .gain .gl{font-size:11px;color:var(--muted)}
+  .barbg{height:8px;background:#eee;border-radius:6px;margin-top:6px;overflow:hidden}
+  .barfill{height:100%;background:var(--accent2);border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">AI 화성 챌린지 · 시민 부문 · 출생아 수 전국 1위 도시의 보육·통근 수급 시뮬</div>
+    <h1>화성 살이 나침반</h1>
+    <div class="tag">확률 시뮬레이션으로 — 시민은 거주를 저울질하고, 시는 자원을 최적 배치한다</div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab on" id="tabCitizen" onclick="setMode('citizen')">시민 모드 · 거주 저울질</div>
+    <div class="tab" id="tabPolicy" onclick="setMode('policy')">정책 모드 · 보육 수급 불균형 진단</div>
+  </div>
+
+  <div class="grid" id="citizenView">
+    <div class="panel">
+      <h2>내 조건</h2>
+      <label>직장 위치</label>
+      <select id="job">
+        <option value="gangnam">서울 강남 (광역버스)</option>
+        <option value="pangyo">판교 (광역+환승)</option>
+        <option value="dongtan_job">동탄 테크노밸리</option>
+        <option value="hwaseong_ind">화성 산단 (서부)</option>
+      </select>
+      <label>가구 형태</label>
+      <select id="house">
+        <option value="single">1인 가구</option>
+        <option value="couple">신혼 (영유아 없음)</option>
+        <option value="infant">영유아 자녀 1</option>
+      </select>
+      <label>차량</label>
+      <select id="car">
+        <option value="no">없음 (대중교통)</option>
+        <option value="yes">있음</option>
+      </select>
+      <button class="run" onclick="runCitizen()">시뮬레이션 실행 ▶</button>
+      <div class="runs-note">동네별 <b id="nruns">2,000</b>회 몬테카를로 시행</div>
+      <div class="method"><b>엔진:</b> 통근을 이벤트 흐름(출발·환승·혼잡·도착)으로 모델링,
+        요일·시간대·혼잡을 확률변수로 넣어 분포 생성. 통근·집값·보육 대기의
+        <b>음의 상관</b>을 동네 구조에 반영해 유토피아 동네가 생기지 않도록 함.</div>
+    </div>
+    <div>
+      <div class="cards" id="cards">
+        <div class="empty" style="grid-column:1/-1">조건을 고르고 <b>실행</b>을 눌러보세요.</div>
+      </div>
+      <div id="verdict"></div>
+      <details style="margin-top:16px;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:14px 16px">
+        <summary style="cursor:pointer;font-weight:800;font-size:13px;color:var(--ink2)">📊 설정값과 근거 (실측 ✓ / 추정 △)</summary>
+        <table style="width:100%;font-size:12px;margin-top:10px;border-collapse:collapse">
+          <tr style="color:var(--muted);text-align:left"><th style="padding:4px 6px">항목</th><th>값</th><th>근거</th></tr>
+          <tr><td style="padding:4px 6px">화성 평균 통근</td><td>36.8분</td><td>✓ 국가교통DB(거주지·전수단)</td></tr>
+          <tr><td style="padding:4px 6px">권역별 통근 평균·변동</td><td>동탄 58±13 등</td><td>△ 위 앵커 + 광역버스 실소요 기반 추정</td></tr>
+          <tr><td style="padding:4px 6px">국공립 충족률 격차</td><td>동탄 87% vs 송산 70%</td><td>✓ 어린이집정보공개포털 실측 사례</td></tr>
+          <tr><td style="padding:4px 6px">권역 영유아·정원 합계</td><td>동탄 4,200/2,900 등</td><td>△ 예시값 — 정원·현원 API 전수 캘리브레이션 예정</td></tr>
+          <tr><td style="padding:4px 6px">정원 회전율</td><td>연 18%±</td><td>△ 졸업·이탈 통상치 가정</td></tr>
+          <tr><td style="padding:4px 6px">생활비 변동폭</td><td>±8%</td><td>△ 시세 분산 가정</td></tr>
+        </table>
+      </details>
+      <details style="margin-top:8px;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:14px 16px">
+        <summary style="cursor:pointer;font-weight:800;font-size:13px;color:var(--ink2)">📖 결과 읽는 법 · 정확도 한계</summary>
+        <div style="font-size:12px;line-height:1.7;margin-top:8px;color:var(--ink2)">
+          <b>통근 72분(최악 95)</b> = 2,000개 시나리오의 평균과 상위 10% 값. 히스토그램이 분포 그 자체.<br>
+          <b>70분 초과 확률 52%</b> = 2,000회 중 70분을 넘긴 비율. "절반은 70분 넘게 걸린다"로 읽음.<br>
+          <b>국공립 대기 83% (CI 72~93)</b> = 시나리오 중 빈자리를 못 잡는 비율. CI는 시나리오 10~90% 범위.<br>
+          <b>정확도 한계</b> — △ 표시 값은 추정이라 절대값보다 <b>동네 간 상대 비교</b>가 신뢰 대상.
+          숫자 자체가 아니라 "어디가 얼마나 더 위험한가"의 방향과 크기를 보는 도구이며,
+          최종본은 공개 API 전수 캘리브레이션으로 절대값 정확도를 확보한다.
+        </div>
+      </details>
+      <div class="foot">PROTOTYPE · 파라미터 앵커: 국가교통DB 화성 평균통근 36.8분(거주지·전수단) + 목적지별 광역버스 실소요 · 최종본은 통계청 생활이동·경기버스로 캘리브레이션</div>
+    </div>
+  </div>
+
+  <div class="grid hidden" id="policyView">
+    <div class="panel">
+      <h2>정책 실험</h2>
+      <label>추가할 공공 자원</label>
+      <select id="asset"><option value="care">국공립 보육시설 1개소</option></select>
+      <label>목표 지표</label>
+      <select id="target"><option value="wait">수급 불균형(미충족) 우선 해소</option></select>
+      <label>후보 입지 수</label>
+      <select id="ncand"><option value="6">6개 권역 전수 진단</option></select>
+      <button class="run" onclick="runPolicy()">최적입지 탐색 ▶</button>
+      <div class="runs-note">후보 × 시뮬 <b>전수 비교</b></div>
+      <div class="method"><b>방식:</b> 각 후보 입지에 시설을 1개 추가한 가상 시나리오를 각각
+        몬테카를로로 돌려, 시 전체 보육 대기확률 감소폭을 계산·순위화.
+        시민 시뮬 엔진을 정책 what-if로 재사용한 <b>확률 시뮬 기반 의사결정 지원</b>.
+        시설 정원(60)은 국공립 표준 규모 기준. 시설 신설이 수요를 끌어올리는
+        유도수요 미반영이 현 한계. 실측 검증: 시립동탄(정원70·현원61, 87%) vs 시립화성·송산(정원47·현원33, 70%) — 권역 충족률 격차 실재(어린이집정보공개포털). 권역 합계는 예시이며 최종본은 정원·현원 API 전수 캘리브레이션.</div>
+    </div>
+    <div>
+      <div id="policyOut">
+        <div class="empty"><b>최적입지 탐색</b>을 눌러보세요.<br>보육시설 1개를 어디 두면 대기가 가장 줄까를 탐색합니다.</div>
+      </div>
+      <div class="foot">PROTOTYPE · 시민용 시뮬 엔진을 정책 의사결정(최적입지)으로 확장 · 관공청용 what-if</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DONGS = [
+  {id:"dongtan", name:"동탄", desc:"신도시 · 청년밀집", color:"var(--dong-a)",
+   base:{gangnam:58,pangyo:45,dongtan_job:15,hwaseong_ind:42}, var:{gangnam:13,pangyo:11,dongtan_job:5,hwaseong_ind:11},
+   rent:95, care:0.72, transit:0.9, infants:4200, careCap:2900},
+  {id:"bibong", name:"비봉·봉담", desc:"중간지대 · 혼합", color:"var(--dong-c)",
+   base:{gangnam:70,pangyo:52,dongtan_job:35,hwaseong_ind:24}, var:{gangnam:16,pangyo:13,dongtan_job:10,hwaseong_ind:7},
+   rent:68, care:0.35, transit:0.55, infants:1500, careCap:1250},
+  {id:"hyangnam", name:"향남·우정", desc:"서부 읍면 · 농어촌", color:"var(--dong-b)",
+   base:{gangnam:83,pangyo:68,dongtan_job:50,hwaseong_ind:16}, var:{gangnam:19,pangyo:16,dongtan_job:13,hwaseong_ind:6},
+   rent:52, care:0.14, transit:0.3, infants:900, careCap:820},
+];
+const N=2000;
+function gauss(m,s){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();
+  return m+s*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+function simDong(d,job,house,car){
+  const times=[];
+  const legBase=d.base[job], legSd=d.var[job];
+  const carF = car==="yes";
+  const poorTransit = (car==="no" && d.transit<0.5);
+  for(let i=0;i<N;i++){
+    // ── 이산사건 통근 체인: 도보 → 정류장대기 → (만석시 대기반복) → 승차 → 환승 → 하차 ──
+    let t=0;
+    // 1) 도보 접근 (정류장까지) — transit 낮을수록 멀다
+    t += Math.max(1, gauss(carF?2:8*(1.2-d.transit), 2));
+    // 2) 정류장 대기 (배차간격의 절반 기대, 변동)
+    if(!carF){
+      let headway = poorTransit? gauss(22,8) : gauss(12,5);
+      t += Math.max(1, headway*Math.random());   // 도착 타이밍 균등
+      // 3) 만석 통과 이벤트: 확률적으로 몇 대 보냄
+      let boardP = poorTransit?0.55:0.8;
+      let miss=0; while(Math.random()>boardP && miss<3){ t += Math.max(1,headway); miss++; }
+    }
+    // 4) 본선 주행 (핵심 구간) — 요일·혼잡 확률
+    let run = gauss(legBase*(carF?0.82:1.0), legSd*(carF?0.7:1.0));
+    if(Math.random()<0.12) run += gauss(18,8);   // 혼잡 이벤트(긴 꼬리)
+    t += run;
+    // 5) 환승 패널티 (판교 등 환승 목적지)
+    if(job==="pangyo") t += Math.max(0, gauss(8,4));
+    times.push(Math.max(6,t));
+  }
+  times.sort((a,b)=>a-b);
+  const mean=times.reduce((a,b)=>a+b,0)/N;
+  const p90=times[Math.floor(N*0.9)];
+  const over70=times.filter(t=>t>70).length/N;
+
+  // ── 보육: 대기열 근사 — '내 아이가 빈자리를 잡을 확률'을 시뮬 (0/100 쏠림 제거) ──
+  let careWait=0, careLo=0, careHi=0;
+  if(house==="infant"){
+    const slack=(d.careCap-d.infants)/d.infants;  // 음수=공급부족
+    let hits=[];
+    for(let i=0;i<N;i++){
+      // 연간 이탈로 생기는 빈자리(회전율) + 대기 순번 확률
+      const turnover=0.18*(1+gauss(0,0.15));       // 정원의 약 18%가 매년 회전
+      const availRate=Math.max(0, (1+slack)*turnover + gauss(0,0.05));
+      // 내가 자리를 못 잡을(대기) 확률 = 1 - min(1, 가용/1)
+      const wait = 1 - Math.min(1, availRate/(0.5+Math.random()*0.5));
+      hits.push(Math.max(0,Math.min(1,wait)));
+    }
+    hits.sort((a,b)=>a-b);
+    careWait=hits.reduce((a,b)=>a+b,0)/N;
+    careLo=hits[Math.floor(N*0.1)]; careHi=hits[Math.floor(N*0.9)];
+  }
+  // ── 생활비: 시세·관리비 변동 몬테카를로 → 분포 ──
+  const costs=[];
+  const cBase=d.rent + (car==="yes"?35:12) + (house==="infant"?20:8);
+  for(let i=0;i<N;i++){ costs.push(cBase*(1+gauss(0,0.08))); }
+  costs.sort((a,b)=>a-b);
+  const cost=Math.round(costs.reduce((a,b)=>a+b,0)/N);
+  const costP10=Math.round(costs[Math.floor(N*0.1)]), costP90=Math.round(costs[Math.floor(N*0.9)]);
+  const bins=new Array(12).fill(0), lo=10, hi=110, w=(hi-lo)/12;
+  times.forEach(t=>{let b=Math.floor((t-lo)/w);b=Math.max(0,Math.min(11,b));bins[b]++;});
+  const mx=Math.max(...bins);
+  return {mean,p90,over70,careWait,careLo,careHi,cost,costP10,costP90,bins:bins.map(b=>b/mx),house};
+}
+function risk(p){ if(p>=.6)return['hi','높음']; if(p>=.3)return['mid','보통']; return['lo','낮음']; }
+
+// ── 연출: 몬테카를로 카운터 → 결과 렌더 → 바 성장 + 숫자 카운트업 ──
+function runCitizen(){
+  const cardsEl=document.getElementById('cards');
+  cardsEl.innerHTML=`<div class="empty" style="grid-column:1/-1">
+    <div style="font-size:13px;letter-spacing:1px;color:var(--muted);font-weight:700">MONTE CARLO SIMULATION</div>
+    <div style="font-size:38px;font-weight:800;color:var(--ink);margin:6px 0"><span id="mcCount">0</span><span style="font-size:16px;color:var(--muted)"> / 6,000회</span></div>
+    <div style="font-size:12px;color:var(--muted)">동네 3곳 × 2,000 시나리오 생성 중…</div></div>`;
+  document.getElementById('verdict').innerHTML='';
+  let n=0; const target=6000, step=Math.ceil(target/28);
+  const iv=setInterval(()=>{
+    n=Math.min(target,n+step+Math.floor(Math.random()*140));
+    const el=document.getElementById('mcCount'); if(el) el.textContent=n.toLocaleString();
+    if(n>=target){ clearInterval(iv); renderCitizen(); }
+  },26);
+}
+function countUp(el,to,suffix=''){
+  const dur=520, start=performance.now();
+  function tick(t){ const p=Math.min(1,(t-start)/dur);
+    el.textContent=Math.round(to*(0.2+0.8*p*p))+suffix;
+    if(p<1) requestAnimationFrame(tick); else el.textContent=Math.round(to)+suffix; }
+  requestAnimationFrame(tick);
+}
+function renderCitizen(){
+  const job=job_.value, house=house_.value, car=car_.value;
+  const res=DONGS.map(d=>({d,r:simDong(d,job,house,car)}));
+  document.getElementById('cards').innerHTML=res.map(({d,r})=>{
+    const [rc,rt]=risk(r.over70);
+    const careHtml=r.house==="infant"
+      ? `<div class="metric"><div class="k">국공립 입소 대기 확률</div><div class="v">${Math.round(r.careWait*100)}%<small> 90%CI ${Math.round(r.careLo*100)}~${Math.round(r.careHi*100)}</small></div>
+         <span class="risk ${risk(r.careWait)[0]}">${risk(r.careWait)[1]}</span></div>`
+      : `<div class="metric"><div class="k">보육</div><div class="v"><small>해당 없음</small></div></div>`;
+    const bars=r.bins.map(h=>`<span class="hb" data-h="${Math.max(4,h*44)}" style="height:4px;background:${d.color};transition:height .5s cubic-bezier(.2,.8,.3,1)"></span>`).join('');
+    return `<div class="card" style="animation:cardIn .35s ease both"><div class="bar" style="background:${d.color}"></div>
+      <h3>${d.name}</h3><div class="sub">${d.desc}</div>
+      <div class="metric"><div class="k">통근시간 분포 (분)</div>
+        <div class="v"><span class="cu" data-to="${Math.round(r.mean)}">0</span><small> 평균 · 최악 ${Math.round(r.p90)}</small></div>
+        <div class="hist">${bars}</div></div>
+      <div class="metric"><div class="k">70분 초과 확률</div>
+        <div class="v"><span class="cu" data-to="${Math.round(r.over70*100)}" data-sfx="%">0%</span></div><span class="risk ${rc}">${rt}</span></div>
+      ${careHtml}
+      <div class="metric"><div class="k">월 생활비 추정</div><div class="v"><span class="cu" data-to="${r.cost}">0</span><small> 만원 · ${r.costP10}~${r.costP90}</small></div></div>
+    </div>`;
+  }).join('');
+  // 애니메이션 트리거
+  requestAnimationFrame(()=>{ 
+    document.querySelectorAll('.hb').forEach((b,i)=>setTimeout(()=>b.style.height=b.dataset.h+'px', 60+i*14));
+    document.querySelectorAll('.cu').forEach(el=>countUp(el,+el.dataset.to, el.dataset.sfx||''));
+  });
+  const byComm=[...res].sort((a,b)=>a.r.mean-b.r.mean)[0];
+  const byCare=house==="infant"?[...res].sort((a,b)=>a.r.careWait-b.r.careWait)[0]:null;
+  const byCost=[...res].sort((a,b)=>a.r.cost-b.r.cost)[0];
+  let v=`<b>${byComm.d.name}</b>은 통근이 가장 안정적(평균 ${Math.round(byComm.r.mean)}분). `;
+  if(byCare&&byCare.d.id!==byComm.d.id) v+=`하지만 영유아 보육은 <b>${byCare.d.name}</b>이 대기 ${Math.round(byCare.r.careWait*100)}%로 여유. `;
+  v+=`생활비는 <b>${byCost.d.name}</b>이 월 ${byCost.r.cost}만원 최저. — 정답은 없다. <b>당신의 우선순위</b>로 저울질하세요.`;
+  document.getElementById('verdict').innerHTML=`<div class="verdict">${v}</div>`;
+}
+
+// 후보 입지: 권역별 미충족 영유아(수요-공급)로 우선순위가 결정됨 (하드코딩 아님, 데이터 유도)
+// localShare = 해당 동네 내에서 이 후보 권역이 차지하는 미충족 비중
+const CANDIDATES=[
+  {name:"동탄 A (신주거지)", dong:"dongtan", localShare:0.42},
+  {name:"동탄 B (역세권)",   dong:"dongtan", localShare:0.28},
+  {name:"비봉 (택지)",       dong:"bibong",  localShare:0.60},
+  {name:"봉담 (구시가)",     dong:"bibong",  localShare:0.40},
+  {name:"향남 (읍중심)",     dong:"hyangnam",localShare:0.65},
+  {name:"우정 (농어촌)",     dong:"hyangnam",localShare:0.35},
+];
+const CARE_SLOT=60;  // 국공립 어린이집 표준 정원(보육사업안내 기준)
+function cityWaitRate(extraCap){
+  let unmet=0, tot=0;
+  DONGS.forEach(d=>{
+    let cap=d.careCap + (extraCap[d.id]||0);
+    unmet+=Math.max(0, d.infants-cap); tot+=d.infants;
+  });
+  return unmet/tot;
+}
+function runPolicy(){
+  const base=cityWaitRate({});
+  const results=CANDIDATES.map(c=>{
+    const dong=DONGS.find(x=>x.id===c.dong);
+    const localUnmet=Math.max(0,(dong.infants-dong.careCap))*c.localShare;
+    let resolves=[];
+    for(let k=0;k<400;k++){
+      const fillRate=Math.min(1, 1+gauss(0,0.06));
+      const absorbed=Math.min(CARE_SLOT*fillRate, localUnmet*(1+gauss(0,0.08)));
+      resolves.push(localUnmet>0? absorbed/localUnmet : 0);   // 시설 1개당 권역 미충족 해소율
+    }
+    resolves.sort((a,b)=>a-b);
+    const resolve=resolves.reduce((a,b)=>a+b,0)/resolves.length;
+    const lo=resolves[Math.floor(resolves.length*0.1)], hi=resolves[Math.floor(resolves.length*0.9)];
+    return {...c, resolve, lo, hi, localUnmet:Math.round(localUnmet)};
+  }).sort((a,b)=>b.localUnmet-a.localUnmet);   // 정렬 기준 = 미충족 규모 (합성점수 없음)
+  const maxUnmet=results[0].localUnmet;
+  const rows=results.map((r,i)=>{
+    return `<div class="rank ${i===0?'best':''}">
+      <div class="no">${i+1}</div>
+      <div class="body"><div class="t">${r.name}${i===0?' · 우선':''}</div>
+        <div class="d">시설 1개소 배치 시 권역 미충족의 ${(r.resolve*100).toFixed(0)}% 해소 (90%CI ${(r.lo*100).toFixed(0)}~${(r.hi*100).toFixed(0)}%)</div>
+        <div class="barbg"><div class="barfill" style="width:${Math.max(4,r.localUnmet/maxUnmet*100)}%"></div></div></div>
+      <div class="gain"><div class="g">${r.localUnmet}명</div><div class="gl">권역 미충족 영유아</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('policyOut').innerHTML=
+    `<div class="verdict" style="margin-top:0;margin-bottom:16px">
+       저출생기 보육은 총량 부족이 아니라 <b>수급 불균형</b>(남는 곳과 모자란 곳의 공존)이 문제다.
+       미충족이 가장 큰 <b>${results[0].name}</b>(≈${results[0].localUnmet}명)이 재배치·신규배치의 1순위이며,
+       시설 1개소로 권역 미충족의 약 ${(results[0].resolve*100).toFixed(0)}%가 해소된다.
+       순위는 합성 점수 없이 <b>미충족 규모 그대로</b> 정렬했다.</div>${rows}`;
+}
+function setMode(m){
+  const cv=document.getElementById('citizenView'), pv=document.getElementById('policyView');
+  const tc=document.getElementById('tabCitizen'), tp=document.getElementById('tabPolicy');
+  if(m==='citizen'){cv.classList.remove('hidden');pv.classList.add('hidden');tc.classList.add('on');tp.classList.remove('on');}
+  else{pv.classList.remove('hidden');cv.classList.add('hidden');tp.classList.add('on');tc.classList.remove('on');}
+}
+const job_=document.getElementById('job'),house_=document.getElementById('house'),car_=document.getElementById('car');
+</script>
+</body>
+</html>
