@@ -137,7 +137,7 @@
           최종본은 공개 API 전수 캘리브레이션으로 절대값 정확도를 확보한다.
         </div>
       </details>
-      <div class="foot">PROTOTYPE · 파라미터 앵커: 국가교통DB 화성 평균통근 36.8분(거주지·전수단) + 목적지별 광역버스 실소요 · 최종본은 통계청 생활이동·경기버스로 캘리브레이션</div>
+      <div class="foot" id="footNote">PROTOTYPE · 파라미터 앵커: 국가교통DB 화성 평균통근 36.8분(거주지·전수단) + 목적지별 광역버스 실소요 · 최종본은 통계청 생활이동·경기버스로 캘리브레이션</div>
     </div>
   </div>
 
@@ -179,6 +179,31 @@ const DONGS = [
    base:{gangnam:83,pangyo:68,dongtan_job:50,hwaseong_ind:16}, var:{gangnam:19,pangyo:16,dongtan_job:13,hwaseong_ind:6},
    rent:52, care:0.14, transit:0.3, infants:900, careCap:820},
 ];
+
+// 생활비(rent) 라이브 연동 — 실패해도 위 하드코딩 값으로 계속 동작
+const RENT_API = "https://hwaseong-compass-proxy.dogfootbro.workers.dev/rent";
+(async () => {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(RENT_API, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error("bad status " + res.status);
+    const data = await res.json();
+    let updated = 0;
+    for (const d of DONGS) {
+      const g = data.groups && data.groups[d.id];
+      if (g && typeof g.median === "number") { d.rent = g.median; updated++; }
+    }
+    if (updated === DONGS.length) {
+      const note = document.getElementById("footNote");
+      if (note) note.textContent = `LIVE · 생활비: 국토교통부 아파트 전월세 실거래가 API 실시간 연동 (${data.ymd}) · ` + note.textContent;
+    }
+  } catch (e) {
+    console.warn("생활비 라이브 연동 실패, 하드코딩 값 사용:", e);
+  }
+})();
+
 const N=2000;
 function gauss(m,s){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();
   return m+s*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
