@@ -121,9 +121,10 @@
           <tr><td style="padding:4px 6px">화성 평균 통근</td><td>36.8분</td><td>✓ 국가교통DB(거주지·전수단)</td></tr>
           <tr><td style="padding:4px 6px">권역별 통근 평균·변동</td><td>동탄 58±13 등</td><td>△ 위 앵커 + 광역버스 실소요 기반 추정</td></tr>
           <tr><td style="padding:4px 6px">국공립 충족률 격차</td><td>동탄 87% vs 송산 70%</td><td>✓ 어린이집정보공개포털 실측 사례</td></tr>
-          <tr><td style="padding:4px 6px">권역 영유아·정원 합계</td><td>동탄 4,200/2,900 등</td><td>△ 예시값 — 정원·현원 API 전수 캘리브레이션 예정</td></tr>
+          <tr><td style="padding:4px 6px">권역 영유아·정원 합계</td><td>동탄 4,200/2,900 등</td><td>△ 예시값 — 보육시설 정원 API는 별도 심의승인(2~3일) 필요해 이번 라운드엔 미포함</td></tr>
           <tr><td style="padding:4px 6px">정원 회전율</td><td>연 18%±</td><td>△ 졸업·이탈 통상치 가정</td></tr>
-          <tr><td style="padding:4px 6px">생활비 변동폭</td><td>±8%</td><td>△ 시세 분산 가정</td></tr>
+          <tr><td style="padding:4px 6px">권역 생활비 기준값</td><td id="rentEvidenceVal">동탄 95 · 비봉 68 · 향남 52 (만원)</td><td id="rentEvidenceSrc">△ 예시값 — 로드 후 아래 LIVE 배지 확인</td></tr>
+          <tr><td style="padding:4px 6px">생활비 변동폭</td><td>±8%</td><td>△ 시세 분산 가정 (기준값 위에 얹는 변동폭)</td></tr>
         </table>
       </details>
       <details style="margin-top:8px;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:14px 16px">
@@ -198,6 +199,10 @@ const RENT_API = "https://hwaseong-compass-proxy.dogfootbro.workers.dev/rent";
     if (updated === DONGS.length) {
       const note = document.getElementById("footNote");
       if (note) note.textContent = `LIVE · 생활비: 국토교통부 아파트 전월세 실거래가 API 실시간 연동 (${data.ymd}) · ` + note.textContent;
+      const val = document.getElementById("rentEvidenceVal");
+      const src = document.getElementById("rentEvidenceSrc");
+      if (val) val.textContent = DONGS.map(d => `${d.name} ${d.rent}`).join(" · ") + " (만원, 월세환산)";
+      if (src) src.textContent = `✓ 실시간 API (국토부 전월세 실거래가, ${data.ymd} 기준)`;
     }
   } catch (e) {
     console.warn("생활비 라이브 연동 실패, 하드코딩 값 사용:", e);
