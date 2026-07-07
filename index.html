@@ -362,7 +362,7 @@ function runPolicy(){
     for(let k=0;k<400;k++){
       const fillRate=Math.min(1, 1+gauss(0,0.06));
       const absorbed=Math.min(CARE_SLOT*fillRate, localUnmet*(1+gauss(0,0.08)));
-      resolves.push(localUnmet>0? absorbed/localUnmet : 0);   // 시설 1개당 권역 미충족 해소율
+      resolves.push(localUnmet>0? Math.min(1, absorbed/localUnmet) : 0);   // 시설 1개당 권역 미충족 해소율 (100% 상한)
     }
     resolves.sort((a,b)=>a-b);
     const resolve=resolves.reduce((a,b)=>a+b,0)/resolves.length;
