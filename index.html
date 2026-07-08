@@ -188,7 +188,7 @@ const RENT_API = "https://hwaseong-compass-proxy.dogfootbro.workers.dev/rent";
 (async () => {
   try {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const timer = setTimeout(() => ctrl.abort(), 12000); // Worker가 3개 생활권 병렬 조회 시 캐시 콜드면 9~10초까지 걸림 — 여유있게
     const res = await fetch(RENT_API, { signal: ctrl.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error("bad status " + res.status);
